@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Segmentation Test</title>
+</head>
+<body>
+    <h1>Test YOLO Model API with Segmentation</h1>
+    <form id="uploadForm">
+        <label for="imageInput">Upload an Image:</label><br><br>
+        <input type="file" id="imageInput" accept="image/*"><br><br>
+        <button type="button" onclick="sendImage()">Predict</button>
+    </form>
+
+    <h2>Prediction Results</h2>
+    <pre id="results"></pre>
+    
+    <h2>Segmented Image</h2>
+    <img id="segmentedImage" alt="Segmented Image" style="max-width: 100%; border: 1px solid black;" />
+
+    <script>
+        async function sendImage() {
+            const fileInput = document.getElementById('imageInput');
+            const resultsDiv = document.getElementById('results');
+            const segmentedImage = document.getElementById('segmentedImage');
+            
+            if (fileInput.files.length === 0) {
+                resultsDiv.textContent = "Please select an image.";
+                segmentedImage.src = "";
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(event) {
+                const base64Image = event.target.result.split(',')[1]; // Get Base64 string without the prefix
+                
+                const payload = {
+                    image: base64Image
+                };
+
+                try {
+                    const response = await fetch("http://127.0.0.1:5000/predict", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        resultsDiv.textContent = `Error: ${response.status} - ${response.statusText}`;
+                        segmentedImage.src = "";
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    // Display predictions
+                    resultsDiv.textContent = JSON.stringify(data.predictions, null, 2);
+
+                    // Display segmented image
+                    segmentedImage.src = `data:image/jpeg;base64,${data.segmented_image}`;
+                } catch (error) {
+                    resultsDiv.textContent = `Error: ${error.message}`;
+                    segmentedImage.src = "";
+                }
+            };
+
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>
